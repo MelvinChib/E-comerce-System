@@ -58,6 +58,14 @@ The application will start on `http://localhost:8080`
 
 ## 📚 API Documentation
 
+### Authentication Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | User login |
+| GET | `/api/auth/user/{id}` | Get user by ID |
+
 ### Product Endpoints
 
 | Method | Endpoint | Description |
@@ -67,6 +75,25 @@ The application will start on `http://localhost:8080`
 | GET | `/api/products/category/{categoryId}` | Get products by category |
 | PUT | `/api/products/{id}` | Update existing product |
 | DELETE | `/api/products/{id}` | Delete product |
+
+### Cart Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cart/{userId}` | Get user's cart |
+| POST | `/api/cart/{userId}/add` | Add item to cart |
+| PUT | `/api/cart/{userId}/update/{productId}` | Update cart item quantity |
+| DELETE | `/api/cart/{userId}/remove/{productId}` | Remove item from cart |
+| DELETE | `/api/cart/{userId}/clear` | Clear entire cart |
+
+### Order Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/orders/{userId}` | Create order from cart |
+| GET | `/api/orders/{orderId}` | Get order by ID |
+| GET | `/api/orders/user/{userId}` | Get user's order history |
+| PUT | `/api/orders/{orderId}/status` | Update order status |
 
 ### Example Requests
 
@@ -79,6 +106,42 @@ POST /api/products
   "price": 999.99,
   "stock": 10,
   "categoryId": 1
+}
+```
+
+#### Register User
+```json
+POST /api/auth/register
+{
+  "userName": "john_doe",
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+#### Login User
+```json
+POST /api/auth/login
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+#### Add to Cart
+```json
+POST /api/cart/1/add
+{
+  "productId": 1,
+  "quantity": 2
+}
+```
+
+#### Create Order
+```json
+POST /api/orders/1
+{
+  "shippingAddress": "123 Main St, City, State 12345"
 }
 ```
 
@@ -119,18 +182,29 @@ This repository tracks the incremental development of the e-commerce system. Eac
 - [x] Exception handling
 - [x] Documentation
 
-### Next Phase: User Management 🚧
-- [ ] User registration and authentication
-- [ ] Role-based access control
-- [ ] JWT token implementation
-- [ ] User profile management
+### Phase 2: User Management ✅
+- [x] User registration and authentication
+- [x] Role-based access control
+- [x] JWT token implementation
+- [x] User profile management
+
+### Phase 3: Shopping Cart ✅
+- [x] Shopping cart functionality
+- [x] Add/remove items from cart
+- [x] Update item quantities
+- [x] Cart persistence
+
+### Phase 4: Order Management ✅
+- [x] Order creation from cart
+- [x] Order status tracking
+- [x] Order history
+- [x] Stock management
 
 ### Future Phases: 📋
-- [ ] Shopping cart functionality
-- [ ] Order management system
 - [ ] Payment integration
 - [ ] Email notifications
 - [ ] Admin dashboard
+- [ ] Product reviews and ratings
 
 ## 🤝 Contributing
 
