@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiTruck, FiCreditCard } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import { cartAPI, ordersAPI } from '../services/api';
 
 const Cart = ({ userId }) => {
   const [cart, setCart] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [shippingAddress, setShippingAddress] = useState('');
-  const [message, setMessage] = useState('');
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [updatingItems, setUpdatingItems] = useState({});
 
   useEffect(() => {
     loadCart();
@@ -15,101 +19,198 @@ const Cart = ({ userId }) => {
       const response = await cartAPI.getCart(userId);
       setCart(response.data);
     } catch (err) {
-      setMessage('Failed to load cart');
+      toast.error('Failed to load cart');
+    } finally {
+      setLoading(false);
     }
   };
 
   const updateQuantity = async (productId, quantity) => {
+    setUpdatingItems(prev => ({ ...prev, [productId]: true }));
     try {
       await cartAPI.updateItem(userId, productId, quantity);
       loadCart();
     } catch (err) {
-      setMessage('Failed to update quantity');
+      toast.error('Failed to update quantity');
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [productId]: false }));
     }
   };
 
   const removeItem = async (productId) => {
+    setUpdatingItems(prev => ({ ...prev, [productId]: true }));
     try {
       await cartAPI.removeItem(userId, productId);
+      toast.success('Item removed from cart');
       loadCart();
     } catch (err) {
-      setMessage('Failed to remove item');
+      toast.error('Failed to remove item');
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [productId]: false }));
     }
   };
 
   const createOrder = async () => {
     if (!shippingAddress.trim()) {
-      setMessage('Please enter shipping address');
+      toast.error('Please enter shipping address');
       return;
     }
     
+    setPlacingOrder(true);
     try {
       await ordersAPI.createOrder(userId, { shippingAddress });
-      setMessage('Order created successfully!');
+      toast.success('Order placed successfully!');
       setShippingAddress('');
       loadCart();
     } catch (err) {
-      setMessage('Failed to create order');
+      toast.error('Failed to create order');
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
-  if (!cart) return <div>Loading cart...</div>;
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="spinner" />
+        Loading cart...
+      </div>
+    );
+  }
+
+  const isEmpty = !cart?.items || cart.items.length === 0;
 
   return (
     <div>
-      <h2>Shopping Cart</h2>
-      {message && <div className="error">{message}</div>}
-      
-      {cart.items && cart.items.length === 0 ? (
-        <p>Your cart is empty</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <FiShoppingCart size={24} color="var(--primary)" />
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem' }}>Shopping Cart</h1>
+          <p style={{ color: 'var(--text-muted)' }}>
+            {isEmpty ? 'Your cart is empty' : `${cart.items.length} item${cart.items.length > 1 ? 's' : ''} in your cart`}
+          </p>
+        </div>
+      </div>
+
+      {isEmpty ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🛍️</div>
+          <h3 className="empty-state-title">Your cart is empty</h3>
+          <p className="empty-state-description">Add some products to get started!</p>
+        </div>
       ) : (
-        <>
-          {cart.items && cart.items.map(item => (
-            <div key={item.id} className="cart-item">
-              <div>
-                <h4>{item.productName}</h4>
-                <p>${item.productPrice} x {item.quantity} = ${item.subtotal}</p>
-              </div>
-              <div>
-                <button 
-                  className="btn" 
-                  onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                >
-                  -
-                </button>
-                <span style={{margin: '0 10px'}}>{item.quantity}</span>
-                <button 
-                  className="btn" 
-                  onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                >
-                  +
-                </button>
-                <button 
-                  className="btn btn-danger" 
-                  onClick={() => removeItem(item.productId)}
-                >
-                  Remove
-                </button>
+        <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 400px' }}>
+          <div>
+            <div className="card">
+              <div className="card-body" style={{ padding: 0 }}>
+                {cart.items.map((item, index) => (
+                  <div key={item.id} className="cart-item" style={{ 
+                    borderBottom: index === cart.items.length - 1 ? 'none' : '1px solid var(--border)'
+                  }}>
+                    <div className="cart-item-info">
+                      <h4 className="cart-item-title">{item.productName}</h4>
+                      <p className="cart-item-price">${item.productPrice} each</p>
+                      <p style={{ color: 'var(--primary)', fontWeight: '600' }}>Subtotal: ${item.subtotal}</p>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div className="quantity-controls">
+                        <button 
+                          className="quantity-btn"
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          disabled={updatingItems[item.productId] || item.quantity <= 1}
+                        >
+                          <FiMinus size={14} />
+                        </button>
+                        <span className="quantity-display">{item.quantity}</span>
+                        <button 
+                          className="quantity-btn"
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          disabled={updatingItems[item.productId]}
+                        >
+                          <FiPlus size={14} />
+                        </button>
+                      </div>
+                      
+                      <button 
+                        className="btn btn-danger"
+                        onClick={() => removeItem(item.productId)}
+                        disabled={updatingItems[item.productId]}
+                        style={{ padding: '0.5rem' }}
+                      >
+                        {updatingItems[item.productId] ? (
+                          <div className="spinner" style={{ width: '16px', height: '16px' }} />
+                        ) : (
+                          <FiTrash2 size={16} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-          
-          <div className="card">
-            <h3>Total: ${cart.totalPrice}</h3>
-            <div className="form-group">
-              <label>Shipping Address:</label>
-              <input
-                type="text"
-                value={shippingAddress}
-                onChange={(e) => setShippingAddress(e.target.value)}
-                placeholder="Enter your shipping address"
-              />
-            </div>
-            <button className="btn" onClick={createOrder}>
-              Place Order
-            </button>
           </div>
-        </>
+          
+          <div>
+            <div className="checkout-summary">
+              <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FiCreditCard />
+                Order Summary
+              </h3>
+              
+              <div className="summary-row">
+                <span>Subtotal:</span>
+                <span>${cart.totalPrice}</span>
+              </div>
+              <div className="summary-row">
+                <span>Shipping:</span>
+                <span style={{ color: 'var(--success)' }}>Free</span>
+              </div>
+              <div className="summary-row">
+                <span>Tax:</span>
+                <span>${(cart.totalPrice * 0.08).toFixed(2)}</span>
+              </div>
+              
+              <div className="summary-row summary-total">
+                <span>Total:</span>
+                <span>${(cart.totalPrice * 1.08).toFixed(2)}</span>
+              </div>
+              
+              <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                <label className="form-label">
+                  <FiTruck style={{ marginRight: '0.5rem' }} />
+                  Shipping Address
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="Enter your shipping address"
+                />
+              </div>
+              
+              <button 
+                className="btn btn-success"
+                style={{ width: '100%', marginTop: '1rem' }}
+                onClick={createOrder}
+                disabled={placingOrder || !shippingAddress.trim()}
+              >
+                {placingOrder ? (
+                  <>
+                    <div className="spinner" />
+                    Placing Order...
+                  </>
+                ) : (
+                  <>
+                    <FiCreditCard />
+                    Place Order
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
